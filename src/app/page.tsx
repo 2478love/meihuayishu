@@ -97,7 +97,7 @@ export default function Home() {
     setChatLoading(true);
 
     try {
-      const historyTurns = nextMessages.map(({ role, content: text }) => ({
+      const historyTurns = chatMessages.map(({ role, content: text }) => ({
         role,
         content: text,
       }));
@@ -160,6 +160,11 @@ export default function Home() {
           divinationResult.mainHexagram.upperTrigram,
           divinationResult.mainHexagram.lowerTrigram
         ),
+        mutualHexagram: divinationResult.mutualHexagram ?
+          getFullHexagram(
+            divinationResult.mutualHexagram.upperTrigram,
+            divinationResult.mutualHexagram.lowerTrigram
+          ) : undefined,
         changedHexagram: divinationResult.changedHexagram ?
           getFullHexagram(
             divinationResult.changedHexagram.upperTrigram,

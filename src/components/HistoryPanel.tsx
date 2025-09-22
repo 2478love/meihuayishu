@@ -39,6 +39,7 @@ export default function HistoryPanel({ onSelect, onClose }: HistoryPanelProps) {
   const handleSelect = (item: HistoryItem) => {
     const result: DivinationResult = {
       mainHexagram: item.mainHexagram,
+      mutualHexagram: item.mutualHexagram,
       changingLine: item.changingLine,
       changedHexagram: item.changedHexagram,
       interpretation: item.interpretation,

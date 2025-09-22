@@ -1,4 +1,6 @@
 import { Hexagram } from '@/types';
+import { trigrams } from './trigrams';
+import { hexagramMap } from './hexagrams-data';
 
 export const hexagrams: Record<string, Hexagram> = {
   '11': { name: '乾', upperTrigram: 1, lowerTrigram: 1, number: 1, symbol: '☰☰', meaning: '元亨利贞', description: '天行健，君子以自强不息' },
@@ -65,20 +67,26 @@ const basicHexagramsMap: Record<string, Hexagram> = {
 export function getHexagramByTrigrams(upper: number, lower: number): Hexagram | undefined {
   const key = `${upper}${lower}`;
 
-  // 如果找不到具体卦象，返回一个默认卦象
+  // 优先使用完整的六十四卦数据
+  const fullHexagram = hexagramMap.get(key);
+  if (fullHexagram) {
+    return fullHexagram;
+  }
+
+  // 如果找不到完整卦象，使用基础卦象
   if (basicHexagramsMap[key]) {
     return basicHexagramsMap[key];
   }
 
   // 返回一个通用的卦象结构
   return {
-    name: `第${upper}${lower}卦`,
+    name: `${getTrigramName(upper)}${getTrigramName(lower)}`,
     upperTrigram: upper,
     lowerTrigram: lower,
     number: 0,
     symbol: '卦象',
     meaning: '待解释',
-    description: `上卦为${getTrigramName(upper)}，下卦为${getTrigramName(lower)}`
+    description: `上${getTrigramName(upper)}下${getTrigramName(lower)}`
   };
 }
 
@@ -91,30 +99,17 @@ function getTrigramName(num: number): string {
 }
 
 export function getHexagramLines(upper: number, lower: number): boolean[] {
-  const lines: boolean[] = [];
-
-  // 下卦三爻
   const lowerLines = getTrigramLines(lower);
-  lines.push(...lowerLines);
-
-  // 上卦三爻
   const upperLines = getTrigramLines(upper);
-  lines.push(...upperLines);
 
-  return lines;
+  // 六爻顺序：下卦三爻 + 上卦三爻（从下到上：1,2,3,4,5,6爻）
+  const combined = [...lowerLines, ...upperLines];
+  return combined;
 }
 
 function getTrigramLines(trigram: number): boolean[] {
-  const trigramMap: Record<number, boolean[]> = {
-    1: [true, true, true],     // 乾
-    2: [false, true, true],    // 兑
-    3: [true, false, true],    // 离
-    4: [false, false, true],   // 震
-    5: [true, true, false],    // 巽
-    6: [false, true, false],   // 坎
-    7: [true, false, false],   // 艮
-    8: [false, false, false]   // 坤
-  };
+  const normalized = ((trigram % 8) || 8);
+  const data = trigrams[normalized];
 
-  return trigramMap[trigram] || [false, false, false];
+  return data ? [...data.lines] : [false, false, false];
 }

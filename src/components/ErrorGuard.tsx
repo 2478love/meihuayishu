@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect } from 'react';
 
@@ -20,7 +20,7 @@ export default function ErrorGuard() {
         const key = typeof property === 'symbol' ? property.toString() : property;
 
         if (target === window && key === 'conflux' && message.includes('Cannot redefine property')) {
-          return Reflect.get(target, property);
+          return Reflect.get(window as unknown as object, property);
         }
 
         throw error;
@@ -61,3 +61,4 @@ export default function ErrorGuard() {
 
   return null;
 }
+

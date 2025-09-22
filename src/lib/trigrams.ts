@@ -14,7 +14,7 @@ export const trigrams: Record<number, Trigram> = {
     name: '兑',
     symbol: '☱',
     number: 2,
-    lines: [false, true, true],
+    lines: [true, true, false],
     attribute: '悦',
     direction: '西',
     element: '金'
@@ -32,7 +32,7 @@ export const trigrams: Record<number, Trigram> = {
     name: '震',
     symbol: '☳',
     number: 4,
-    lines: [false, false, true],
+    lines: [true, false, false],
     attribute: '动',
     direction: '东',
     element: '木'
@@ -41,7 +41,7 @@ export const trigrams: Record<number, Trigram> = {
     name: '巽',
     symbol: '☴',
     number: 5,
-    lines: [true, true, false],
+    lines: [false, true, true],
     attribute: '入',
     direction: '东南',
     element: '木'
@@ -59,7 +59,7 @@ export const trigrams: Record<number, Trigram> = {
     name: '艮',
     symbol: '☶',
     number: 7,
-    lines: [true, false, false],
+    lines: [false, false, true],
     attribute: '止',
     direction: '东北',
     element: '土'
