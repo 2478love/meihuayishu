@@ -92,11 +92,12 @@ export default function Home() {
       createdAt: timestamp,
     };
 
-    setChatMessages(prev => [...prev, userMessage]);
+    const nextMessages = [...chatMessages, userMessage];
+    setChatMessages(nextMessages);
     setChatLoading(true);
 
     try {
-      const historyTurns = chatMessages.map(({ role, content: text }) => ({
+      const historyTurns = nextMessages.map(({ role, content: text }) => ({
         role,
         content: text,
       }));
@@ -208,32 +209,20 @@ export default function Home() {
         <div className="pointer-events-none absolute bottom-[-200px] right-[-120px] h-[360px] w-[360px] rounded-full bg-gradient-to-br from-indigo-200 via-purple-200 to-transparent opacity-40 blur-3xl dark:from-indigo-500/30 dark:via-purple-500/30"></div>
       </div>
       <div className="relative z-10 container mx-auto py-8 px-4">
-        {/* 顶部工具栏 */}
-        <div className="flex justify-between items-center mb-8">
-          <motion.h1
-            className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-          >
-            梅花易数
-          </motion.h1>
+        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-8">
+          <div>
+            {/* 顶部工具栏 */}
+            <div className="flex items-center mb-8">
+              <motion.h1
+                className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+              >
+                梅花易数
+              </motion.h1>
+            </div>
 
-          <motion.button
-            onClick={() => setShowHistory(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span>历史记录</span>
-          </motion.button>
-        </div>
-
-        <AnimatePresence mode="wait">
+            <AnimatePresence mode="wait">
           {!result ? (
             <motion.div
               key="form"
@@ -414,34 +403,6 @@ export default function Home() {
               </motion.div>
 
               <motion.div
-                className="w-full"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.7 }}
-              >
-                <AiInsightCard
-                  status={insightStatus}
-                  insight={aiInsight}
-                  error={insightError}
-                  onRetry={handleRefreshInsight}
-                  onAsk={handleAskInsightQuestion}
-                />
-              </motion.div>
-
-              <motion.div
-                className="w-full"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.8 }}
-              >
-                <AiChatPanel
-                  messages={chatMessages}
-                  onSend={handleSendChatMessage}
-                  isBusy={chatLoading}
-                />
-              </motion.div>
-
-              <motion.div
                 className="text-center"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -457,6 +418,40 @@ export default function Home() {
             </motion.div>
           )}
         </AnimatePresence>
+          </div>
+
+          <aside className="mt-8 lg:mt-0">
+            <div className="flex flex-col gap-6 sticky top-8">
+              <motion.button
+                onClick={() => setShowHistory(true)}
+                className="flex items-center justify-center gap-2 rounded-lg border border-indigo-100 bg-white/95 px-4 py-2 text-sm font-medium text-indigo-600 shadow-md transition hover:border-indigo-200 hover:shadow-lg dark:border-indigo-500/30 dark:bg-gray-900/90 dark:text-indigo-200"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>历史记录</span>
+              </motion.button>
+
+              <AiInsightCard
+                status={insightStatus}
+                insight={aiInsight}
+                error={insightError}
+                onRetry={handleRefreshInsight}
+                onAsk={handleAskInsightQuestion}
+              />
+
+              <AiChatPanel
+                messages={chatMessages}
+                onSend={handleSendChatMessage}
+                isBusy={chatLoading}
+              />
+            </div>
+          </aside>
+        </div>
 
         {/* 历史记录面板 */}
         <AnimatePresence>
