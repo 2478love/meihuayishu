@@ -21,6 +21,11 @@
 - 清晰的动爻标识
 - 优雅的渐变背景
 
+### 🤖 AI 协助解读
+- 自动生成主卦、互卦、变卦的整体解读及行动建议
+- 内置对话助手，可围绕卦象追问事业、感情、财富等主题
+- 支持接入国产大模型（如通义千问、文心、智谱等）的 OpenAI 兼容 API
+
 ## 技术栈
 
 - **框架**：Next.js 15 (App Router)
@@ -47,6 +52,16 @@ npm run dev
 npm run build
 npm start
 ```
+
+### 配置 AI 能力
+
+1. 复制 `.env.example` 为 `.env.local`
+2. 按照你的大模型服务商（如通义千问、文心、智谱、百度千帆等）的 OpenAI 兼容接口填写：
+   - `AI_API_KEY`：模型的密钥
+   - `AI_API_BASE_URL`：兼容接口的 Base URL（示例：`https://dashscope.aliyuncs.com/compatible-mode/v1`）
+   - `AI_MODEL`：模型标识（示例：`qwen-plus`、`glm-4-plus`）
+
+更多可选参数可参考 `.env.example` 注释。
 
 ## 使用方法
 

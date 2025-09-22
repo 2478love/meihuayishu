@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { DivinationInput, DivinationResult } from '@/types';
 import { performDivination } from '@/lib/divination';
 import { getFullHexagram } from '@/lib/hexagrams-data';
@@ -8,12 +8,140 @@ import { saveToHistory } from '@/lib/history';
 import DivinationForm from '@/components/DivinationForm';
 import AnimatedHexagram from '@/components/AnimatedHexagram';
 import HistoryPanel from '@/components/HistoryPanel';
+import AiInsightCard from '@/components/AiInsightCard';
+import AiChatPanel from '@/components/AiChatPanel';
 import { motion, AnimatePresence } from 'framer-motion';
+import type { AiChatMessage, AiInsight } from '@/types/ai';
+
+type InsightStatus = 'idle' | 'loading' | 'ready' | 'error';
+
+function serializeResultForApi(result: DivinationResult) {
+  return {
+    ...result,
+    time: result.time instanceof Date ? result.time.toISOString() : result.time,
+  };
+}
 
 export default function Home() {
   const [result, setResult] = useState<DivinationResult | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [aiInsight, setAiInsight] = useState<AiInsight | null>(null);
+  const [insightStatus, setInsightStatus] = useState<InsightStatus>('idle');
+  const [insightError, setInsightError] = useState<string | null>(null);
+  const [chatMessages, setChatMessages] = useState<AiChatMessage[]>([]);
+  const [chatLoading, setChatLoading] = useState(false);
+
+  const requestAiInsight = useCallback(async (targetResult: DivinationResult, question?: string) => {
+    setInsightStatus('loading');
+    setInsightError(null);
+
+    try {
+      const response = await fetch('/api/ai', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          mode: 'insight',
+          result: serializeResultForApi(targetResult),
+          question,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'AI 请求失败');
+      }
+
+      setAiInsight({
+        id: data?.id || `insight-${Date.now()}`,
+        content: data?.content || '',
+        generatedAt: new Date().toISOString(),
+      });
+      setInsightStatus('ready');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'AI 请求失败';
+      setInsightStatus('error');
+      setInsightError(message);
+    }
+  }, []);
+
+  const handleRefreshInsight = () => {
+    if (!result) return;
+    void requestAiInsight(result);
+  };
+
+  const handleAskInsightQuestion = (question: string) => {
+    if (!result) return;
+    void requestAiInsight(result, question);
+  };
+
+  const handleSendChatMessage = async (message: string) => {
+    if (!result) return;
+
+    const content = message.trim();
+    if (!content) return;
+
+    const timestamp = new Date().toISOString();
+    const userMessage: AiChatMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content,
+      createdAt: timestamp,
+    };
+
+    setChatMessages(prev => [...prev, userMessage]);
+    setChatLoading(true);
+
+    try {
+      const historyTurns = chatMessages.map(({ role, content: text }) => ({
+        role,
+        content: text,
+      }));
+
+      const response = await fetch('/api/ai', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          mode: 'chat',
+          result: serializeResultForApi(result),
+          history: historyTurns,
+          userInput: content,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'AI 对话失败');
+      }
+
+      const assistantMessage: AiChatMessage = {
+        id: data?.id || `assistant-${Date.now()}`,
+        role: 'assistant',
+        content: data?.content || '',
+        createdAt: new Date().toISOString(),
+      };
+
+      setChatMessages(prev => [...prev, assistantMessage]);
+    } catch (error) {
+      const messageText = error instanceof Error ? error.message : 'AI 对话失败';
+      const assistantMessage: AiChatMessage = {
+        id: `assistant-${Date.now()}`,
+        role: 'assistant',
+        content: `抱歉，我未能完成本次回复：${messageText}`,
+        createdAt: new Date().toISOString(),
+      };
+
+      setChatMessages(prev => [...prev, assistantMessage]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
 
   const handleDivination = async (input: DivinationInput) => {
     try {
@@ -40,6 +168,12 @@ export default function Home() {
 
       setResult(enhancedResult);
       saveToHistory(enhancedResult);
+      setAiInsight(null);
+      setChatMessages([]);
+      setInsightStatus('loading');
+      setInsightError(null);
+      setChatLoading(false);
+      void requestAiInsight(enhancedResult);
       setIsAnimating(false);
     } catch (error) {
       setIsAnimating(false);
@@ -49,11 +183,22 @@ export default function Home() {
 
   const handleReset = () => {
     setResult(null);
+    setAiInsight(null);
+    setInsightStatus('idle');
+    setInsightError(null);
+    setChatMessages([]);
+    setChatLoading(false);
   };
 
   const handleSelectHistory = (historicalResult: DivinationResult) => {
     setResult(historicalResult);
     setShowHistory(false);
+    setAiInsight(null);
+    setChatMessages([]);
+    setInsightStatus('loading');
+    setInsightError(null);
+    setChatLoading(false);
+    void requestAiInsight(historicalResult);
   };
 
   return (
@@ -266,6 +411,34 @@ export default function Home() {
                       ))}
                   </div>
                 </div>
+              </motion.div>
+
+              <motion.div
+                className="w-full"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.7 }}
+              >
+                <AiInsightCard
+                  status={insightStatus}
+                  insight={aiInsight}
+                  error={insightError}
+                  onRetry={handleRefreshInsight}
+                  onAsk={handleAskInsightQuestion}
+                />
+              </motion.div>
+
+              <motion.div
+                className="w-full"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.8 }}
+              >
+                <AiChatPanel
+                  messages={chatMessages}
+                  onSend={handleSendChatMessage}
+                  isBusy={chatLoading}
+                />
               </motion.div>
 
               <motion.div
