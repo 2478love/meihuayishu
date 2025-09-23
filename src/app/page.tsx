@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { Fragment, useCallback, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { DivinationInput, DivinationResult, Hexagram } from '@/types';
 import { performDivination } from '@/lib/divination';
 import { getFullHexagram } from '@/lib/hexagrams-data';
@@ -31,8 +31,18 @@ export default function Home() {
   const [insightError, setInsightError] = useState<string | null>(null);
   const [chatMessages, setChatMessages] = useState<AiChatMessage[]>([]);
   const [chatLoading, setChatLoading] = useState(false);
+  const insightRequestRef = useRef<{ controller: AbortController; requestId: number } | null>(null);
 
   const requestAiInsight = useCallback(async (targetResult: DivinationResult, question?: string) => {
+    const controller = new AbortController();
+    const requestId = Date.now();
+
+    if (insightRequestRef.current) {
+      insightRequestRef.current.controller.abort();
+    }
+
+    insightRequestRef.current = { controller, requestId };
+
     setInsightStatus('loading');
     setInsightError(null);
 
@@ -47,9 +57,14 @@ export default function Home() {
           result: serializeResultForApi(targetResult),
           question,
         }),
+        signal: controller.signal,
       });
 
       const data = await response.json();
+
+      if (insightRequestRef.current?.requestId !== requestId) {
+        return;
+      }
 
       if (!response.ok) {
         throw new Error(data?.error || 'AI 请求失败');
@@ -62,9 +77,27 @@ export default function Home() {
       });
       setInsightStatus('ready');
     } catch (error) {
+      const isAbortError = error instanceof DOMException && error.name === 'AbortError'
+        || (typeof error === 'object' && error !== null && 'name' in error && (error as { name?: string }).name === 'AbortError');
+
+      if (isAbortError || insightRequestRef.current?.requestId !== requestId) {
+        return;
+      }
+
       const message = error instanceof Error ? error.message : 'AI 请求失败';
       setInsightStatus('error');
       setInsightError(message);
+    } finally {
+      if (insightRequestRef.current?.requestId === requestId) {
+        insightRequestRef.current = null;
+      }
+    }
+  }, []);
+
+  useEffect(() => () => {
+    if (insightRequestRef.current) {
+      insightRequestRef.current.controller.abort();
+      insightRequestRef.current = null;
     }
   }, []);
 

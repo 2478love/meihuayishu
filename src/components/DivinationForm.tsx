@@ -66,6 +66,7 @@ export default function DivinationForm({ onSubmit }: DivinationFormProps) {
           month: timeInput.month,
           day: timeInput.day,
           hour: timeInput.hour,
+          minute: timeInput.minute,
           useLunar: useLunar,
         };
         break;
@@ -155,7 +156,7 @@ export default function DivinationForm({ onSubmit }: DivinationFormProps) {
             className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-all"
           >
             <optgroup label="传统起卦法">
-              <option value="time">时间起卦（年月日时）</option>
+              <option value="time">时间起卦（年月日时分）</option>
               <option value="number">数字起卦（报数起卦）</option>
               <option value="text">文字起卦（测字起卦）</option>
             </optgroup>
@@ -195,7 +196,7 @@ export default function DivinationForm({ onSubmit }: DivinationFormProps) {
               </div>
             </div>
             
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">年</label>
                 <input
@@ -240,9 +241,20 @@ export default function DivinationForm({ onSubmit }: DivinationFormProps) {
                   max="23"
                 />
               </div>
+              <div>
+                <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">分</label>
+                <input
+                  type="number"
+                  value={timeInput.minute}
+                  onChange={(e) => setTimeInput(prev => ({ ...prev, minute: Number.parseInt(e.target.value, 10) }))}
+                  className="w-full p-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                  min="0"
+                  max="59"
+                />
+              </div>
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              根据起卦时间的年、月、日、时辰进行起卦
+              根据起卦时间的年、月、日、时辰和分钟进行起卦
             </p>
           </div>
         )}
