@@ -8,21 +8,27 @@ interface DivinationFormProps {
   onSubmit: (input: DivinationInput) => void;
 }
 
-type DivinationType =
-  | 'time'
-  | 'number'
-  | 'manual'
-  | 'text'
-  | 'direction'
-  | 'sound'
-  | 'color'
-  | 'object';
+const divinationTypeValues = [
+  'time',
+  'number',
+  'manual',
+  'text',
+  'direction',
+  'sound',
+  'color',
+  'object',
+] as const;
+
+type DivinationType = (typeof divinationTypeValues)[number];
+
+const isDivinationType = (value: string): value is DivinationType =>
+  (divinationTypeValues as readonly string[]).includes(value);
 
 interface DivinationMethodOption {
   value: DivinationType;
   label: string;
   description: string;
-  category: '统起卦法' | '观物起卦法' | '其他';
+  category: '传统起卦法' | '观物起卦法' | '其他';
   hint: string;
   tips: string[];
 }
@@ -32,7 +38,7 @@ const divinationMethods: DivinationMethodOption[] = [
     value: 'time',
     label: '时间起卦',
     description: '依据指定时刻的年、月、日、时、分推演卦象，适合记录事件发生的瞬间。',
-    category: '统起卦法',
+    category: '传统起卦法',
     hint: '按真实时间',
     tips: [
       '支持公历与农历切换，传统时辰需勾选“使用农历”。',
@@ -43,7 +49,7 @@ const divinationMethods: DivinationMethodOption[] = [
     value: 'number',
     label: '数字起卦',
     description: '通过报数、掷硬币或随机数字起卦，第三个数直接指向动爻。',
-    category: '统起卦法',
+    category: '传统起卦法',
     hint: '报数推演',
     tips: [
       '至少输入两个数字，第三个数字可作为动爻依据。',
@@ -54,7 +60,7 @@ const divinationMethods: DivinationMethodOption[] = [
     value: 'text',
     label: '文字起卦',
     description: '自动统计文字字数与笔画推导卦象，适合测字、签文等场景。',
-    category: '统起卦法',
+    category: '传统起卦法',
     hint: '测字启示',
     tips: [
       '请去除空格与标点，保持原始汉字或词句。',
@@ -118,7 +124,7 @@ const divinationMethods: DivinationMethodOption[] = [
   },
 ];
 
-const methodGroupOrder = ['统起卦法', '观物起卦法', '其他'] as const;
+const methodGroupOrder = ['传统起卦法', '观物起卦法', '其他'] as const;
 
 const divinationMethodGroups = methodGroupOrder.map(category => ({
   title: category,
@@ -324,9 +330,33 @@ export default function DivinationForm({ onSubmit }: DivinationFormProps) {
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
               起卦方式
             </label>
-            <span className="text-xs text-gray-400 dark:text-gray-500">点击卡片选择不同的起卦思路</span>
+            <span className="text-xs text-gray-400 dark:text-gray-500">点击卡片或下拉列表选择不同的起卦思路</span>
           </div>
-          <div className="space-y-5">
+
+          <div className="sm:hidden">
+            <select
+              value={divinationType}
+              onChange={(event) => {
+                const value = event.target.value;
+                if (isDivinationType(value)) {
+                  setDivinationType(value);
+                }
+              }}
+              className="w-full rounded-lg border border-gray-300 bg-white p-3 text-sm focus:border-transparent focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+            >
+              {divinationMethodGroups.map(group => (
+                <optgroup key={group.title} label={group.title}>
+                  {group.items.map(method => (
+                    <option key={method.value} value={method.value}>
+                      {`${method.label}（${method.hint}）`}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </div>
+
+          <div className="hidden space-y-5 sm:block">
             {divinationMethodGroups.map(group => (
               <div key={group.title} className="space-y-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.35em] text-indigo-400 dark:text-indigo-300/80">

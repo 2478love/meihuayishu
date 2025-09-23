@@ -141,8 +141,11 @@ export default function Home() {
   }, [abortInsightRequest]);
 
   useEffect(() => () => {
-    abortInsightRequest();
-  }, [abortInsightRequest]);
+    if (insightRequestRef.current) {
+      insightRequestRef.current.controller.abort();
+      insightRequestRef.current = null;
+    }
+  }, []);
 
   const handleRefreshInsight = () => {
     if (!result) return;
