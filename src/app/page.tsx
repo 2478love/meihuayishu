@@ -1,7 +1,7 @@
-'use client';
+﻿'use client';
 
-import { useCallback, useState } from 'react';
-import { DivinationInput, DivinationResult } from '@/types';
+import { Fragment, useCallback, useState } from 'react';
+import { DivinationInput, DivinationResult, Hexagram } from '@/types';
 import { performDivination } from '@/lib/divination';
 import { getFullHexagram } from '@/lib/hexagrams-data';
 import { saveToHistory } from '@/lib/history';
@@ -165,11 +165,12 @@ export default function Home() {
             divinationResult.mutualHexagram.upperTrigram,
             divinationResult.mutualHexagram.lowerTrigram
           ) : undefined,
-        changedHexagram: divinationResult.changedHexagram ?
+        changingHexagram: divinationResult.changingHexagram ?
           getFullHexagram(
-            divinationResult.changedHexagram.upperTrigram,
-            divinationResult.changedHexagram.lowerTrigram
-          ) : undefined
+            divinationResult.changingHexagram.upperTrigram,
+            divinationResult.changingHexagram.lowerTrigram
+          ) : undefined,
+
       };
 
       setResult(enhancedResult);
@@ -206,6 +207,33 @@ export default function Home() {
     setChatLoading(false);
     void requestAiInsight(historicalResult);
   };
+
+  const hexagramSequence: Array<{ key: 'main' | 'mutual' | 'changing'; hexagram: Hexagram; title: string; changingLine?: number }> = [];
+
+  if (result) {
+    hexagramSequence.push({
+      key: 'main',
+      hexagram: result.mainHexagram,
+      title: '主卦',
+      changingLine: result.changingLine,
+    });
+
+    if (result.mutualHexagram) {
+      hexagramSequence.push({
+        key: 'mutual',
+        hexagram: result.mutualHexagram,
+        title: '互卦',
+      });
+    }
+
+    if (result.changingHexagram) {
+      hexagramSequence.push({
+        key: 'changing',
+        hexagram: result.changingHexagram,
+        title: '变卦',
+      });
+    }
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-gray-950 transition-colors duration-300">
@@ -320,64 +348,41 @@ export default function Home() {
                     {result.mutualHexagram.name}
                   </span>
                 )}
-                {result.changedHexagram && (
-                  <span className="inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-white/85 px-4 py-1.5 text-sm text-slate-700 shadow-sm dark:border-gray-700/50 dark:bg-gray-800/60 dark:text-gray-200">
-                    <span className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-gray-400/80">变卦</span>
-                    {result.changedHexagram.name}
+                {result.changingHexagram && (
+                  <span className="inline-flex items-center gap-2 rounded-full border border-purple-200/70 bg-purple-50/80 px-4 py-1.5 text-sm text-purple-700 shadow-sm dark:border-purple-500/40 dark:bg-purple-500/10 dark:text-purple-200">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-purple-400 dark:text-purple-300/80">变卦</span>
+                    {result.changingHexagram.name}
                   </span>
                 )}
               </motion.div>
 
               <div className="flex flex-col lg:flex-row gap-8 justify-center items-stretch w-full">
-                <AnimatedHexagram
-                  hexagram={result.mainHexagram}
-                  changingLine={result.changingLine}
-                  title="主卦"
-                  delay={0}
-                />
-
-                {result.mutualHexagram && (
-                  <>
-                    <motion.div
-                      className="flex items-center justify-center self-center"
-                      initial={{ opacity: 0, scale: 0 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.3 }}
-                    >
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-indigo-100 via-purple-100 to-indigo-50 text-2xl text-indigo-500 shadow-sm dark:from-indigo-500/20 dark:via-purple-500/20 dark:text-indigo-200">
-                        →
-                      </div>
-                    </motion.div>
-
+                {hexagramSequence.map((item, index) => (
+                  <Fragment key={item.key}>
                     <AnimatedHexagram
-                      hexagram={result.mutualHexagram}
-                      title="互卦"
-                      delay={0.2}
+                      hexagram={item.hexagram}
+                      changingLine={item.changingLine}
+                      title={item.title}
+                      delay={index * 0.2}
                     />
-                  </>
-                )}
-
-                {result.changedHexagram && (
-                  <>
-                    <motion.div
-                      className="flex items-center justify-center self-center"
-                      initial={{ opacity: 0, scale: 0 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.5 }}
-                    >
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-indigo-100 via-purple-100 to-indigo-50 text-2xl text-indigo-500 shadow-sm dark:from-indigo-500/20 dark:via-purple-500/20 dark:text-indigo-200">
-                        →
-                      </div>
-                    </motion.div>
-
-                    <AnimatedHexagram
-                      hexagram={result.changedHexagram}
-                      title="变卦"
-                      delay={0.4}
-                    />
-                  </>
-                )}
+                    {index < hexagramSequence.length - 1 && (
+                      <motion.div
+                        className="flex items-center justify-center self-center"
+                        initial={{ opacity: 0, scale: 0 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: index * 0.2 + 0.2 }}
+                      >
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-indigo-100 via-purple-100 to-indigo-50 text-2xl text-indigo-500 shadow-sm dark:from-indigo-500/20 dark:via-purple-500/20 dark:text-indigo-200">
+                          <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14m-6-6 6 6-6 6" />
+                          </svg>
+                        </div>
+                      </motion.div>
+                    )}
+                  </Fragment>
+                ))}
               </div>
+
 
               <motion.div
                 className="relative overflow-hidden rounded-2xl border border-slate-100/80 bg-white/95 p-6 shadow-xl backdrop-blur dark:border-gray-700/70 dark:bg-gray-900/85"

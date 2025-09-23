@@ -22,7 +22,8 @@ export interface DivinationResult {
   mainHexagram: Hexagram;
   mutualHexagram?: Hexagram; // 互卦
   changingLine: number;
-  changedHexagram?: Hexagram;
+  changingHexagram?: Hexagram; // 变卦
+
   interpretation: string;
   time: Date;
 }
@@ -33,6 +34,7 @@ export interface DivinationInput {
   month?: number;
   day?: number;
   hour?: number;
+  minute?: number;
   numbers?: number[];
   text?: string;
   direction?: string;

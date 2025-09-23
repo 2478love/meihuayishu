@@ -63,6 +63,6 @@ function hydrateResult(raw: DivinationResult): DivinationResult {
     ...raw,
     time: new Date(raw.time),
     mutualHexagram: raw.mutualHexagram || undefined,
-    changedHexagram: raw.changedHexagram || undefined,
+    changingHexagram: raw.changingHexagram || undefined,
   };
 }

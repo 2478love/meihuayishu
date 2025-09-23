@@ -2,7 +2,9 @@
 import { solar2lunar } from "solarlunar";
 
 import type { DivinationInput, DivinationResult, Hexagram } from "@/types";
-import { deriveMainHexagram, deriveMutualHexagram, deriveChangedHexagram, normalizeTrigramSeed, normalizeLineSeed } from "./hexagram-calculations";
+import { deriveMainHexagram, deriveMutualHexagram, normalizeTrigramSeed, normalizeLineSeed } from "./hexagram-calculations";
+import { getHexagramLines } from "./hexagrams";
+import { trigrams } from "./trigrams";
 
 const LATER_HEAVEN_NUMBERS = {
   qian: 1,
@@ -98,7 +100,7 @@ export function performDivination(input: DivinationInput): DivinationResult {
 function timeBasedDivination(input: DivinationInput): DivinationResult {
   const context = resolveTemporalContext(input);
   const doubleHour = getChineseDoubleHour(context.hour);
-  const minuteSeed = context.minute || 1;
+  const minuteSeed = context.minute;
 
   const upperSeed = context.year + context.month + context.day;
   const lowerSeed = upperSeed + doubleHour;
@@ -116,6 +118,7 @@ function timeBasedDivination(input: DivinationInput): DivinationResult {
     changingSeed,
     method: context.label,
     detailLines,
+    timestamp: context.timestamp,
   });
 }
 
@@ -125,8 +128,8 @@ function numberBasedDivination(input: DivinationInput): DivinationResult {
   }
 
   const sanitized = input.numbers.map((num) => Math.abs(Math.round(num)));
-  const first = sanitized[0] || 1;
-  const second = sanitized[1] || 1;
+  const first = sanitized[0] ?? 1;
+  const second = sanitized[1] ?? 1;
   const third = sanitized[2] ?? first + second;
 
   const detailLines = [
@@ -182,13 +185,15 @@ function directionBasedDivination(input: DivinationInput): DivinationResult {
     throw new Error(`暂不支持的方位“${direction}”，请使用八正方位`);
   }
 
+  const trigramName = TRIGRAM_NAME_BY_NUMBER[trigram] ?? `${trigram}`;
+
   const now = new Date();
   const doubleHour = getChineseDoubleHour(now.getHours());
   const temporalSeed = now.getFullYear() + (now.getMonth() + 1) + now.getDate() + doubleHour;
-  const minuteSeed = now.getMinutes() || 1;
+  const minuteSeed = now.getMinutes();
 
   const detailLines = [
-    `方位取数：${direction} → ${trigram}`,
+    `方位取数：${direction} → ${trigramName}卦`,
     `时空取数：${now.getFullYear()} + ${now.getMonth() + 1} + ${now.getDate()} + ${doubleHour} = ${temporalSeed}`,
     `动爻取数：(${trigram} + ${temporalSeed} + ${minuteSeed})`,
   ];
@@ -199,6 +204,7 @@ function directionBasedDivination(input: DivinationInput): DivinationResult {
     changingSeed: trigram + temporalSeed + minuteSeed,
     method: `方位起卦（观方位：${direction}）`,
     detailLines,
+    timestamp: now,
   });
 }
 
@@ -211,7 +217,7 @@ function soundBasedDivination(input: DivinationInput): DivinationResult {
   const trigram = SOUND_TO_TRIGRAM[sound] ?? SOUND_TO_TRIGRAM["其他"];
   const now = new Date();
   const doubleHour = getChineseDoubleHour(now.getHours());
-  const minuteSeed = now.getMinutes() || 1;
+  const minuteSeed = now.getMinutes();
   const temporalSeed = now.getFullYear() + (now.getMonth() + 1) + now.getDate() + doubleHour;
 
   const detailLines = [
@@ -226,6 +232,7 @@ function soundBasedDivination(input: DivinationInput): DivinationResult {
     changingSeed: trigram + doubleHour + minuteSeed,
     method: `声音起卦（闻声：${sound}）`,
     detailLines,
+    timestamp: now,
   });
 }
 
@@ -256,6 +263,7 @@ function colorBasedDivination(input: DivinationInput): DivinationResult {
     changingSeed: trigram + seasonalSeed,
     method: `颜色起卦（观色：${color}）`,
     detailLines,
+    timestamp: now,
   });
 }
 
@@ -284,6 +292,7 @@ function objectBasedDivination(input: DivinationInput): DivinationResult {
     changingSeed: trigram + strokeSum,
     method: `物象起卦（观物：${description}）`,
     detailLines,
+    timestamp: now,
   });
 }
 
@@ -291,7 +300,7 @@ function manualDivination(): DivinationResult {
   const now = new Date();
   const baseSeed = now.getFullYear() + (now.getMonth() + 1) + now.getDate();
   const momentSeed = now.getHours() * 60 + now.getMinutes() + now.getSeconds();
-  const milliSeed = now.getMilliseconds() || 1;
+  const milliSeed = now.getMilliseconds();
 
   const detailLines = [
     `年月日取数：${baseSeed}`,
@@ -305,6 +314,7 @@ function manualDivination(): DivinationResult {
     changingSeed: baseSeed + momentSeed + milliSeed,
     method: "随机起卦（心动起卦）",
     detailLines,
+    timestamp: now,
   });
 }
 
@@ -315,6 +325,7 @@ interface TemporalContext {
   hour: number;
   minute: number;
   label: string;
+  timestamp: Date;
 }
 
 function resolveTemporalContext(input: DivinationInput): TemporalContext {
@@ -324,7 +335,8 @@ function resolveTemporalContext(input: DivinationInput): TemporalContext {
   const solarMonth = input.month ?? now.getMonth() + 1;
   const solarDay = input.day ?? now.getDate();
   const hour = input.hour ?? now.getHours();
-  const minute = now.getMinutes();
+  const minute = input.minute ?? now.getMinutes();
+  const timestamp = new Date(solarYear, solarMonth - 1, solarDay, hour, minute, 0, 0);
 
   if (input.useLunar) {
     const lunar = solar2lunar(solarYear, solarMonth, solarDay);
@@ -335,6 +347,7 @@ function resolveTemporalContext(input: DivinationInput): TemporalContext {
       hour,
       minute,
       label: "农历时间起卦（梅花易数年月日时）",
+      timestamp,
     };
   }
 
@@ -345,6 +358,7 @@ function resolveTemporalContext(input: DivinationInput): TemporalContext {
     hour,
     minute,
     label: "公历时间起卦（梅花易数年月日时）",
+    timestamp,
   };
 }
 
@@ -354,22 +368,23 @@ interface BuildResultOptions {
   changingSeed: number;
   method: string;
   detailLines?: string[];
+  timestamp?: Date;
 }
 
-function buildResult({ upperSeed, lowerSeed, changingSeed, method, detailLines = [] }: BuildResultOptions): DivinationResult {
+function buildResult({ upperSeed, lowerSeed, changingSeed, method, detailLines = [], timestamp }: BuildResultOptions): DivinationResult {
   const upperTrigram = normalizeTrigramSeed(upperSeed);
   const lowerTrigram = normalizeTrigramSeed(lowerSeed);
   const changingLine = normalizeLineSeed(changingSeed);
 
   const mainHexagram = getRequiredHexagram(upperTrigram, lowerTrigram);
   const mutualHexagram = deriveMutualHexagram(upperTrigram, lowerTrigram);
-  const changedHexagram = deriveChangedHexagram(upperTrigram, lowerTrigram, changingLine);
+  const changingHexagram = deriveChangingHexagram(mainHexagram, changingLine);
 
   const interpretation = generateInterpretation({
     method,
     mainHexagram,
     mutualHexagram,
-    changedHexagram,
+    changingHexagram,
     changingLine,
     detailLines,
   });
@@ -377,11 +392,45 @@ function buildResult({ upperSeed, lowerSeed, changingSeed, method, detailLines =
   return {
     mainHexagram,
     mutualHexagram,
-    changedHexagram,
+    changingHexagram,
     changingLine,
     interpretation,
-    time: new Date(),
+    time: timestamp ?? new Date(),
   };
+}
+
+
+function deriveChangingHexagram(mainHexagram: Hexagram, changingLine: number): Hexagram | undefined {
+  if (changingLine < 1 || changingLine > 6) {
+    return undefined;
+  }
+
+  const baseLines = getHexagramLines(mainHexagram.upperTrigram, mainHexagram.lowerTrigram);
+  if (baseLines.length !== 6) {
+    return undefined;
+  }
+
+  const updatedLines = [...baseLines];
+  const targetIndex = changingLine - 1;
+  updatedLines[targetIndex] = !updatedLines[targetIndex];
+
+  const lowerLines = updatedLines.slice(0, 3);
+  const upperLines = updatedLines.slice(3);
+
+  const lowerTrigram = resolveTrigramFromLines(lowerLines);
+  const upperTrigram = resolveTrigramFromLines(upperLines);
+
+  return getRequiredHexagram(upperTrigram, lowerTrigram);
+}
+
+function resolveTrigramFromLines(lines: boolean[]): number {
+  for (const [key, trigram] of Object.entries(trigrams)) {
+    if (trigram.lines.every((value, index) => value === lines[index])) {
+      return Number(key);
+    }
+  }
+
+  return LATER_HEAVEN_NUMBERS.kun;
 }
 
 function getRequiredHexagram(upperTrigram: number, lowerTrigram: number): Hexagram {
@@ -398,12 +447,12 @@ interface InterpretationOptions {
   method: string;
   mainHexagram: Hexagram;
   mutualHexagram?: Hexagram;
-  changedHexagram?: Hexagram;
+  changingHexagram?: Hexagram;
   changingLine: number;
   detailLines: string[];
 }
 
-function generateInterpretation({ method, mainHexagram, mutualHexagram, changedHexagram, changingLine, detailLines }: InterpretationOptions): string {
+function generateInterpretation({ method, mainHexagram, mutualHexagram, changingHexagram, changingLine, detailLines }: InterpretationOptions): string {
   const lines: string[] = [];
 
   if (method) {
@@ -423,14 +472,14 @@ function generateInterpretation({ method, mainHexagram, mutualHexagram, changedH
     lines.push(`互卦含义：${mutualHexagram.meaning}`);
   }
 
-  lines.push(`【动爻】第${changingLine}爻`);
-
-  if (changedHexagram) {
-    lines.push(`【变卦】${changedHexagram.name}（${changedHexagram.symbol}）`);
-    lines.push(`变卦含义：${changedHexagram.meaning}`);
+  if (changingHexagram) {
+    lines.push(`【变卦】${changingHexagram.name}（${changingHexagram.symbol}）`);
+    lines.push(`变卦含义：${changingHexagram.meaning}`);
   }
 
-  lines.push("【综合分析】主卦体现事情现状，互卦刻画演变过程，变卦指出未来趋向。动爻为关键节点，应依卦象灵活推演吉凶。");
+  lines.push(`【动爻】第${changingLine}爻`);
+
+  lines.push("【综合分析】主卦体现事情现状，互卦刻画演变过程，变卦指示趋势走向。动爻为关键节点，应依卦象灵活推演吉凶。");
 
   return lines.join("\n");
 }

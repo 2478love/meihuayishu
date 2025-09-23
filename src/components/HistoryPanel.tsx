@@ -40,8 +40,9 @@ export default function HistoryPanel({ onSelect, onClose }: HistoryPanelProps) {
     const result: DivinationResult = {
       mainHexagram: item.mainHexagram,
       mutualHexagram: item.mutualHexagram,
+      changingHexagram: item.changingHexagram,
       changingLine: item.changingLine,
-      changedHexagram: item.changedHexagram,
+
       interpretation: item.interpretation,
       time: item.time
     };
@@ -107,16 +108,21 @@ export default function HistoryPanel({ onSelect, onClose }: HistoryPanelProps) {
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100">{item.mainHexagram.name}</h3>
-                        {item.changedHexagram && (
-                          <>
-                            <span className="text-gray-400 dark:text-gray-500">→</span>
-                            <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100">{item.changedHexagram.name}</h3>
-                          </>
-                        )}
+
                       </div>
                       <p className="text-sm text-gray-600 dark:text-gray-300 mb-1">
                         动爻：第{item.changingLine}爻
                       </p>
+                      {item.mutualHexagram && (
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                          互卦：{item.mutualHexagram.name}
+                        </p>
+                      )}
+                      {item.changingHexagram && (
+                        <p className="text-sm text-purple-600 dark:text-purple-300">
+                          变卦：{item.changingHexagram.name}
+                        </p>
+                      )}
                       <p className="text-xs text-gray-500 dark:text-gray-400">
                         {formatDate(item.timestamp)}
                       </p>

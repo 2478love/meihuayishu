@@ -35,35 +35,7 @@ export function deriveMutualHexagram(upperTrigram: number, lowerTrigram: number)
   return getHexagramByTrigrams(mutualUpperTrigram, mutualLowerTrigram);
 }
 
-export function deriveChangedHexagram(
-  upperTrigram: number,
-  lowerTrigram: number,
-  changingLine: number
-): Hexagram | undefined {
-  const normalizedUpper = normalizeTrigramSeed(upperTrigram);
-  const normalizedLower = normalizeTrigramSeed(lowerTrigram);
-  const allLines = getHexagramLines(normalizedUpper, normalizedLower);
 
-  if (allLines.length !== 6) {
-    return getHexagramByTrigrams(normalizedUpper, normalizedLower);
-  }
-
-  const index = changingLine - 1;
-  if (index < 0 || index >= allLines.length) {
-    return getHexagramByTrigrams(normalizedUpper, normalizedLower);
-  }
-
-  const nextLines = allLines.slice();
-  nextLines[index] = !nextLines[index];
-
-  const nextLowerLines = nextLines.slice(0, 3);
-  const nextUpperLines = nextLines.slice(3, 6);
-
-  const nextLowerTrigram = getTrigramFromLines(nextLowerLines);
-  const nextUpperTrigram = getTrigramFromLines(nextUpperLines);
-
-  return getHexagramByTrigrams(nextUpperTrigram, nextLowerTrigram);
-}
 
 export function normalizeTrigramSeed(seed: number): number {
   const safeSeed = Math.abs(Math.floor(seed));

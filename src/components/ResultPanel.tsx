@@ -25,16 +25,7 @@ export default function ResultPanel({ result, onReset }: ResultPanelProps) {
           title="主卦"
         />
 
-        {result.changedHexagram && (
-          <div className="flex flex-col items-center">
-            <div className="hidden lg:block text-2xl text-gray-400 mt-20">→</div>
-            <div className="lg:hidden text-2xl text-gray-400 my-2">↓</div>
-            <HexagramDisplay
-              hexagram={result.changedHexagram}
-              title="变卦"
-            />
-          </div>
-        )}
+
       </div>
 
       <div className="bg-white rounded-lg shadow-md p-6">

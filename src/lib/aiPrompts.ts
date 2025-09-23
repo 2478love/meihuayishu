@@ -1,4 +1,4 @@
-import { AiChatTurn } from '@/types/ai';
+﻿import { AiChatTurn } from '@/types/ai';
 import { DivinationResult } from '@/types';
 import { AiMessage } from './ai';
 
@@ -24,10 +24,11 @@ export function buildInsightMessages(result: DivinationResult, customQuestion?: 
     );
   }
 
-  if (result.changedHexagram) {
+
+
+  if (result.changingHexagram) {
     contextLines.push(
-      `变卦：${result.changedHexagram.number} ${result.changedHexagram.name} (${result.changedHexagram.symbol})`,
-      `变卦含义：${result.changedHexagram.meaning}`
+      `变卦：${result.changingHexagram.number} ${result.changingHexagram.name} - ${result.changingHexagram.meaning}`
     );
   }
 
@@ -41,7 +42,7 @@ export function buildInsightMessages(result: DivinationResult, customQuestion?: 
     '',
     '输出格式要求：',
     '1. 《卦象概览》：简述主卦主旨与整体走势（约80字以内）。',
-    '2. 《动爻洞察》：解释动爻与互卦/变卦的关系，强调变化信号。',
+    '2. 《动爻洞察》：解释动爻与互卦、变卦的关系，强调变化信号。',
     '3. 《实用建议》：给出3条结合现代生活场景的建议，使用编号列表。',
     `4. 《针对性提示》：${focus}`,
   ].join('\n');
@@ -61,12 +62,12 @@ export function buildChatMessages(
 
   const snapshot = [
     `主卦：${result.mainHexagram.number} ${result.mainHexagram.name} (${result.mainHexagram.symbol})`,
-    result.changedHexagram
-      ? `变卦：${result.changedHexagram.number} ${result.changedHexagram.name}`
-      : '变卦：无（或未形成）',
     result.mutualHexagram
       ? `互卦：${result.mutualHexagram.number} ${result.mutualHexagram.name}`
       : '互卦：无',
+    result.changingHexagram
+      ? `变卦：${result.changingHexagram.number} ${result.changingHexagram.name}`
+      : '变卦：无',
     `动爻：第${result.changingLine}爻`,
     `系统解读：${result.interpretation}`,
   ].join('\n');
