@@ -1,9 +1,10 @@
 ﻿'use client';
 
-import { Fragment, useCallback, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { DivinationInput, DivinationResult, Hexagram } from '@/types';
 import { performDivination } from '@/lib/divination';
 import { getFullHexagram } from '@/lib/hexagrams-data';
+import { getTrigramByNumber } from '@/lib/trigrams';
 import { saveToHistory } from '@/lib/history';
 import DivinationForm from '@/components/DivinationForm';
 import AnimatedHexagram from '@/components/AnimatedHexagram';
@@ -14,6 +15,44 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { AiChatMessage, AiInsight } from '@/types/ai';
 
 type InsightStatus = 'idle' | 'loading' | 'ready' | 'error';
+
+interface InterpretationBlock {
+  title?: string;
+  body: string[];
+}
+
+function buildInterpretationBlocks(lines: string[]): InterpretationBlock[] {
+  const blocks: InterpretationBlock[] = [];
+  let current: InterpretationBlock | null = null;
+
+  lines.forEach(line => {
+    const match = line.match(/^【(.+?)】(.*)$/);
+    if (match) {
+      if (current) {
+        blocks.push(current);
+      }
+
+      const [, title, rest] = match;
+      current = {
+        title,
+        body: rest ? [rest.trim()] : [],
+      };
+      return;
+    }
+
+    if (!current) {
+      current = { body: [] };
+    }
+
+    current.body.push(line);
+  });
+
+  if (current) {
+    blocks.push(current);
+  }
+
+  return blocks;
+}
 
 function serializeResultForApi(result: DivinationResult) {
   return {
@@ -31,8 +70,18 @@ export default function Home() {
   const [insightError, setInsightError] = useState<string | null>(null);
   const [chatMessages, setChatMessages] = useState<AiChatMessage[]>([]);
   const [chatLoading, setChatLoading] = useState(false);
+  const insightRequestRef = useRef<{ controller: AbortController; requestId: number } | null>(null);
 
   const requestAiInsight = useCallback(async (targetResult: DivinationResult, question?: string) => {
+    const controller = new AbortController();
+    const requestId = Date.now();
+
+    if (insightRequestRef.current) {
+      insightRequestRef.current.controller.abort();
+    }
+
+    insightRequestRef.current = { controller, requestId };
+
     setInsightStatus('loading');
     setInsightError(null);
 
@@ -47,9 +96,14 @@ export default function Home() {
           result: serializeResultForApi(targetResult),
           question,
         }),
+        signal: controller.signal,
       });
 
       const data = await response.json();
+
+      if (insightRequestRef.current?.requestId !== requestId) {
+        return;
+      }
 
       if (!response.ok) {
         throw new Error(data?.error || 'AI 请求失败');
@@ -62,9 +116,27 @@ export default function Home() {
       });
       setInsightStatus('ready');
     } catch (error) {
+      const isAbortError = error instanceof DOMException && error.name === 'AbortError'
+        || (typeof error === 'object' && error !== null && 'name' in error && (error as { name?: string }).name === 'AbortError');
+
+      if (isAbortError || insightRequestRef.current?.requestId !== requestId) {
+        return;
+      }
+
       const message = error instanceof Error ? error.message : 'AI 请求失败';
       setInsightStatus('error');
       setInsightError(message);
+    } finally {
+      if (insightRequestRef.current?.requestId === requestId) {
+        insightRequestRef.current = null;
+      }
+    }
+  }, []);
+
+  useEffect(() => () => {
+    if (insightRequestRef.current) {
+      insightRequestRef.current.controller.abort();
+      insightRequestRef.current = null;
     }
   }, []);
 
@@ -235,6 +307,42 @@ export default function Home() {
     }
   }
 
+  const methodLine = result ? `起卦方法：${result.method}` : '';
+  const detailLineSet = result ? new Set([methodLine, ...result.detailLines]) : null;
+  const filteredInterpretationLines = result
+    ? result.interpretation
+      .split('\n')
+      .filter(Boolean)
+      .filter(line => !(detailLineSet?.has(line) ?? false))
+    : [];
+  const interpretationBlocks = result ? buildInterpretationBlocks(filteredInterpretationLines) : [];
+  const upperTrigramMeta = result ? getTrigramByNumber(result.mainHexagram.upperTrigram) : null;
+  const lowerTrigramMeta = result ? getTrigramByNumber(result.mainHexagram.lowerTrigram) : null;
+  const seedItems = result
+    ? [
+      {
+        label: '上卦取数',
+        value: result.seeds.upper,
+        hint: upperTrigramMeta ? `归属 ${upperTrigramMeta.name}（${upperTrigramMeta.symbol}）` : undefined,
+      },
+      {
+        label: '下卦取数',
+        value: result.seeds.lower,
+        hint: lowerTrigramMeta ? `归属 ${lowerTrigramMeta.name}（${lowerTrigramMeta.symbol}）` : undefined,
+      },
+      {
+        label: '动爻取数',
+        value: result.seeds.changing,
+        hint: '用于定位变化之爻',
+      },
+    ]
+    : [];
+  const displayInterpretationBlocks: InterpretationBlock[] = interpretationBlocks.length > 0
+    ? interpretationBlocks
+    : filteredInterpretationLines.length > 0
+      ? [{ body: filteredInterpretationLines }]
+      : [];
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-gray-950 transition-colors duration-300">
       <div className="absolute inset-0 -z-10 overflow-hidden">
@@ -330,6 +438,11 @@ export default function Home() {
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   起卦时间：{result.time.toLocaleString('zh-CN')}
                 </p>
+                {result.method && (
+                  <p className="mt-1 text-sm text-indigo-500 dark:text-indigo-300">
+                    起卦方式：{result.method}
+                  </p>
+                )}
               </motion.div>
 
               <motion.div
@@ -354,6 +467,108 @@ export default function Home() {
                     {result.changingHexagram.name}
                   </span>
                 )}
+              </motion.div>
+
+              <motion.div
+                className="mb-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.35 }}
+              >
+                <div className="rounded-2xl border border-slate-100/80 bg-white/95 p-5 shadow-lg backdrop-blur dark:border-gray-700/70 dark:bg-gray-900/85">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.35em] text-indigo-400 dark:text-indigo-300/80">Overview</p>
+                      <h3 className="mt-2 text-lg font-semibold text-gray-900 dark:text-gray-100">{result.method}</h3>
+                    </div>
+                    <span className="rounded-full bg-indigo-100/70 px-3 py-1 text-xs font-medium text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-200">
+                      起卦信息
+                    </span>
+                  </div>
+                  <dl className="mt-4 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                    <div className="flex items-center justify-between gap-2">
+                      <dt className="text-gray-500 dark:text-gray-400">问卦日期</dt>
+                      <dd className="font-medium text-gray-900 dark:text-gray-100">
+                        {result.time.toLocaleDateString('zh-CN')}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <dt className="text-gray-500 dark:text-gray-400">具体时刻</dt>
+                      <dd className="font-medium text-gray-900 dark:text-gray-100">
+                        {result.time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
+                      </dd>
+                    </div>
+                  </dl>
+                  <p className="mt-4 text-xs leading-relaxed text-gray-400 dark:text-gray-500">
+                    动爻落在第{result.changingLine}爻，可结合互卦与变卦判断事情的关键转机。
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-slate-100/80 bg-white/95 p-5 shadow-lg backdrop-blur dark:border-gray-700/70 dark:bg-gray-900/85">
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">原始取数</h3>
+                    <span className="text-xs uppercase tracking-[0.3em] text-indigo-400 dark:text-indigo-300/80">Seeds</span>
+                  </div>
+                  <div className="mt-4 space-y-3">
+                    {seedItems.map(item => (
+                      <div
+                        key={item.label}
+                        className="flex flex-col rounded-xl border border-slate-100/80 bg-slate-50/70 px-3 py-2 text-sm shadow-sm transition dark:border-gray-700/60 dark:bg-gray-800/60"
+                      >
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500">{item.label}</span>
+                          <span className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                            {item.value > 0 ? item.value : '—'}
+                          </span>
+                        </div>
+                        {item.hint && (
+                          <p className="mt-1 text-xs text-indigo-500 dark:text-indigo-300">{item.hint}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-100/80 bg-white/95 p-5 shadow-lg backdrop-blur dark:border-gray-700/70 dark:bg-gray-900/85">
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">卦象结构</h3>
+                    <span className="text-xs uppercase tracking-[0.3em] text-indigo-400 dark:text-indigo-300/80">Trigrams</span>
+                  </div>
+                  <div className="mt-4 space-y-3">
+                    <div className="rounded-xl border border-slate-100/80 bg-slate-50/70 px-3 py-3 shadow-sm dark:border-gray-700/60 dark:bg-gray-800/60">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-indigo-500 dark:text-indigo-300">上卦</p>
+                          <p className="mt-1 text-lg font-semibold text-gray-900 dark:text-gray-100">
+                            {upperTrigramMeta?.name ?? '未记录'}
+                            <span className="ml-2 text-sm font-medium text-indigo-400 dark:text-indigo-300/80">{upperTrigramMeta?.symbol ?? ''}</span>
+                          </p>
+                        </div>
+                        <div className="text-right text-xs text-gray-500 dark:text-gray-400">
+                          <p>五行：{upperTrigramMeta?.element ?? '—'}</p>
+                          <p>方位：{upperTrigramMeta?.direction ?? '—'}</p>
+                        </div>
+                      </div>
+                      <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">卦德：{upperTrigramMeta?.attribute ?? '—'}</p>
+                    </div>
+                    <div className="rounded-xl border border-slate-100/80 bg-slate-50/70 px-3 py-3 shadow-sm dark:border-gray-700/60 dark:bg-gray-800/60">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-indigo-500 dark:text-indigo-300">下卦</p>
+                          <p className="mt-1 text-lg font-semibold text-gray-900 dark:text-gray-100">
+                            {lowerTrigramMeta?.name ?? '未记录'}
+                            <span className="ml-2 text-sm font-medium text-indigo-400 dark:text-indigo-300/80">{lowerTrigramMeta?.symbol ?? ''}</span>
+                          </p>
+                        </div>
+                        <div className="text-right text-xs text-gray-500 dark:text-gray-400">
+                          <p>五行：{lowerTrigramMeta?.element ?? '—'}</p>
+                          <p>方位：{lowerTrigramMeta?.direction ?? '—'}</p>
+                        </div>
+                      </div>
+                      <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">卦德：{lowerTrigramMeta?.attribute ?? '—'}</p>
+                    </div>
+                  </div>
+                </div>
               </motion.div>
 
               <div className="flex flex-col lg:flex-row gap-8 justify-center items-stretch w-full">
@@ -383,6 +598,33 @@ export default function Home() {
                 ))}
               </div>
 
+              {result.detailLines.length > 0 && (
+                <motion.div
+                  className="relative overflow-hidden rounded-2xl border border-slate-100/80 bg-white/95 p-6 shadow-xl backdrop-blur dark:border-gray-700/70 dark:bg-gray-900/85"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 }}
+                >
+                  <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-400 via-purple-400 to-blue-400 dark:from-indigo-500 dark:via-purple-500 dark:to-blue-500" />
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">取数过程</h3>
+                    <span className="text-xs uppercase tracking-[0.3em] text-indigo-400 dark:text-indigo-300/80">Steps</span>
+                  </div>
+                  <ol className="mt-5 space-y-3 text-sm leading-relaxed text-gray-700 dark:text-gray-200">
+                    {result.detailLines.map((line, index) => (
+                      <li
+                        key={`${line}-${index}`}
+                        className="flex items-start gap-3 rounded-xl border border-transparent bg-slate-50/90 px-4 py-3 shadow-sm ring-1 ring-slate-100/60 transition hover:ring-indigo-200 dark:bg-gray-800/60 dark:ring-gray-700/60"
+                      >
+                        <span className="mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-indigo-500/15 text-xs font-semibold text-indigo-500 dark:bg-indigo-500/30 dark:text-indigo-200">
+                          {index + 1}
+                        </span>
+                        <span className="flex-1">{line}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </motion.div>
+              )}
 
               <motion.div
                 className="relative overflow-hidden rounded-2xl border border-slate-100/80 bg-white/95 p-6 shadow-xl backdrop-blur dark:border-gray-700/70 dark:bg-gray-900/85"
@@ -396,18 +638,28 @@ export default function Home() {
                     <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">卦象解读</h3>
                     <span className="text-xs uppercase tracking-[0.3em] text-indigo-400 dark:text-indigo-300/80">Insights</span>
                   </div>
-                  <div className="space-y-3 text-sm leading-relaxed text-gray-700 dark:text-gray-200">
-                    {result.interpretation
-                      .split('\n')
-                      .filter(Boolean)
-                      .map((line, index) => (
-                        <p
-                          key={index}
-                          className="whitespace-pre-wrap rounded-xl border border-transparent bg-slate-50/90 px-4 py-3 shadow-sm ring-1 ring-slate-100/60 transition hover:ring-indigo-200 dark:bg-gray-800/60 dark:text-gray-200 dark:ring-gray-700/60"
-                        >
-                          {line}
-                        </p>
-                      ))}
+                  <div className="space-y-4">
+                    {displayInterpretationBlocks.map((block, index) => (
+                      <div
+                        key={`${block.title ?? 'block'}-${index}`}
+                        className="rounded-xl border border-transparent bg-slate-50/90 px-4 py-3 text-left shadow-sm ring-1 ring-slate-100/60 transition hover:ring-indigo-200 dark:bg-gray-800/60 dark:ring-gray-700/60"
+                      >
+                        {block.title && (
+                          <div className="mb-1 flex items-center gap-2">
+                            <span className="text-sm font-semibold text-indigo-500 dark:text-indigo-300">{block.title}</span>
+                            <span className="h-px flex-1 bg-gradient-to-r from-indigo-200/60 to-transparent dark:from-indigo-500/40" />
+                          </div>
+                        )}
+                        {block.body.map((line, lineIndex) => (
+                          <p
+                            key={lineIndex}
+                            className="whitespace-pre-wrap text-sm leading-relaxed text-gray-700 dark:text-gray-200"
+                          >
+                            {line}
+                          </p>
+                        ))}
+                      </div>
+                    ))}
                   </div>
                 </div>
               </motion.div>

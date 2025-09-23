@@ -12,11 +12,21 @@ export function buildInsightMessages(result: DivinationResult, customQuestion?: 
   const systemPrompt = getSystemPrompt();
 
   const contextLines = [
+    `起卦方法：${result.method}`,
     `主卦：${result.mainHexagram.number} ${result.mainHexagram.name} (${result.mainHexagram.symbol})`,
     `主卦含义：${result.mainHexagram.meaning}`,
     `主卦描述：${result.mainHexagram.description}`,
     `动爻位置：第${result.changingLine}爻`,
   ];
+
+  if (result.detailLines.length > 0) {
+    contextLines.push(`取数过程：${result.detailLines.join(' / ')}`);
+  }
+
+  if (result.seeds) {
+    const { upper, lower, changing } = result.seeds;
+    contextLines.push(`原始取数：上卦 ${upper} · 下卦 ${lower} · 动爻 ${changing}`);
+  }
 
   if (result.mutualHexagram) {
     contextLines.push(
@@ -60,7 +70,8 @@ export function buildChatMessages(
 ): AiMessage[] {
   const systemPrompt = getSystemPrompt();
 
-  const snapshot = [
+  const snapshotParts = [
+    `起卦方法：${result.method}`,
     `主卦：${result.mainHexagram.number} ${result.mainHexagram.name} (${result.mainHexagram.symbol})`,
     result.mutualHexagram
       ? `互卦：${result.mutualHexagram.number} ${result.mutualHexagram.name}`
@@ -69,8 +80,19 @@ export function buildChatMessages(
       ? `变卦：${result.changingHexagram.number} ${result.changingHexagram.name}`
       : '变卦：无',
     `动爻：第${result.changingLine}爻`,
-    `系统解读：${result.interpretation}`,
-  ].join('\n');
+  ];
+
+  if (result.detailLines.length > 0) {
+    snapshotParts.push(`取数过程：${result.detailLines.join(' / ')}`);
+  }
+
+  if (result.seeds) {
+    snapshotParts.push(`原始取数：上卦 ${result.seeds.upper} · 下卦 ${result.seeds.lower} · 动爻 ${result.seeds.changing}`);
+  }
+
+  snapshotParts.push(`系统解读：${result.interpretation}`);
+
+  const snapshot = snapshotParts.join('\n');
 
   const messages: AiMessage[] = [
     { role: 'system', content: systemPrompt },

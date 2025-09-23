@@ -24,6 +24,13 @@ export interface DivinationResult {
   changingLine: number;
   changingHexagram?: Hexagram; // 变卦
 
+  method: string;
+  detailLines: string[];
+  seeds: {
+    upper: number;
+    lower: number;
+    changing: number;
+  };
   interpretation: string;
   time: Date;
 }

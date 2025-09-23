@@ -61,6 +61,9 @@ export async function POST(request: Request) {
 function hydrateResult(raw: DivinationResult): DivinationResult {
   return {
     ...raw,
+    method: raw.method || '未记录起卦方式',
+    detailLines: raw.detailLines || [],
+    seeds: raw.seeds || { upper: 0, lower: 0, changing: 0 },
     time: new Date(raw.time),
     mutualHexagram: raw.mutualHexagram || undefined,
     changingHexagram: raw.changingHexagram || undefined,

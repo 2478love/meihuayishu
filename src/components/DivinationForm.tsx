@@ -8,21 +8,198 @@ interface DivinationFormProps {
   onSubmit: (input: DivinationInput) => void;
 }
 
-const divinationTypeValues = [
-  'time',
-  'number',
-  'manual',
-  'text',
-  'direction',
-  'sound',
-  'color',
-  'object',
-] as const;
+type DivinationType =
+  | 'time'
+  | 'number'
+  | 'manual'
+  | 'text'
+  | 'direction'
+  | 'sound'
+  | 'color'
+  | 'object';
 
-type DivinationType = (typeof divinationTypeValues)[number];
+interface DivinationMethodOption {
+  value: DivinationType;
+  label: string;
+  description: string;
+  category: '统起卦法' | '观物起卦法' | '其他';
+  hint: string;
+  tips: string[];
+}
 
-const isDivinationType = (value: string): value is DivinationType =>
-  (divinationTypeValues as readonly string[]).includes(value);
+const divinationMethods: DivinationMethodOption[] = [
+  {
+    value: 'time',
+    label: '时间起卦',
+    description: '依据指定时刻的年、月、日、时、分推演卦象，适合记录事件发生的瞬间。',
+    category: '统起卦法',
+    hint: '按真实时间',
+    tips: [
+      '支持公历与农历切换，传统时辰需勾选“使用农历”。',
+      '分钟越精确，动爻定位越贴近实际情境。',
+    ],
+  },
+  {
+    value: 'number',
+    label: '数字起卦',
+    description: '通过报数、掷硬币或随机数字起卦，第三个数直接指向动爻。',
+    category: '统起卦法',
+    hint: '报数推演',
+    tips: [
+      '至少输入两个数字，第三个数字可作为动爻依据。',
+      '可选择有意义的数列，或使用随机方式生成。',
+    ],
+  },
+  {
+    value: 'text',
+    label: '文字起卦',
+    description: '自动统计文字字数与笔画推导卦象，适合测字、签文等场景。',
+    category: '统起卦法',
+    hint: '测字启示',
+    tips: [
+      '请去除空格与标点，保持原始汉字或词句。',
+      '长句会累加笔画，适合分析含义更丰富的问卦。',
+    ],
+  },
+  {
+    value: 'direction',
+    label: '方位起卦',
+    description: '从八方方位取象，结合当前时空推算互卦与动爻。',
+    category: '观物起卦法',
+    hint: '观察方向',
+    tips: [
+      '选择最先映入脑海或最有感应的方位。',
+      '常用于来客、风向或突发灵感的指向分析。',
+    ],
+  },
+  {
+    value: 'sound',
+    label: '声音起卦',
+    description: '依据听到的声音类别定上卦，再以当下时间推导变爻。',
+    category: '观物起卦法',
+    hint: '闻声占卜',
+    tips: [
+      '记录第一印象的声源类型即可，系统自动取时辰。',
+      '适合突如其来的叫声、铃声或环境噪音。',
+    ],
+  },
+  {
+    value: 'color',
+    label: '颜色起卦',
+    description: '根据醒目的颜色择卦，结合节气时序推演动爻。',
+    category: '观物起卦法',
+    hint: '观色取象',
+    tips: [
+      '选取最让你在意的主色调，支持梦境或现场感受。',
+      '系统会结合月份与时辰，辅助判断天地气运。',
+    ],
+  },
+  {
+    value: 'object',
+    label: '物象起卦',
+    description: '通过物体的形状、材质与状态匹配卦象，无法匹配时以笔画补足。',
+    category: '观物起卦法',
+    hint: '见物取卦',
+    tips: [
+      '可描述形状、材质、动静等特征，关键词越明确越好。',
+      '若无对应卦象，系统会用文字笔画重新推算。',
+    ],
+  },
+  {
+    value: 'manual',
+    label: '随机起卦',
+    description: '完全依据此刻的年、月、日、时、分、秒生成卦象，贴合当下心念。',
+    category: '其他',
+    hint: '心动即占',
+    tips: [
+      '静心聚焦问题，点击按钮即可生成随机卦象。',
+      '适合作为快速灵感或无外物辅助时的选择。',
+    ],
+  },
+];
+
+const methodGroupOrder = ['统起卦法', '观物起卦法', '其他'] as const;
+
+const divinationMethodGroups = methodGroupOrder.map(category => ({
+  title: category,
+  items: divinationMethods.filter(method => method.category === category),
+}));
+
+const divinationMethodLookup = divinationMethods.reduce((acc, method) => {
+  acc[method.value] = method;
+  return acc;
+}, {} as Record<DivinationType, DivinationMethodOption>);
+
+function MethodIcon({ type, active }: { type: DivinationType; active: boolean }) {
+  const className = active
+    ? 'h-5 w-5 text-white'
+    : 'h-5 w-5 text-indigo-500 dark:text-indigo-300';
+  const strokeWidth = 1.6;
+
+  switch (type) {
+    case 'time':
+      return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth}>
+          <circle cx="12" cy="12" r="8" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M12 8v4l2.5 1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    case 'number':
+      return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M7 8h10M7 12h10M10 5v14M14 5v14" />
+        </svg>
+      );
+    case 'text':
+      return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M5 6h14M12 6v12M8 18h8" />
+          <path d="M8 12h8M8 15h6" />
+        </svg>
+      );
+    case 'direction':
+      return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="8" />
+          <path d="M12 8l3 5-5 3 2-8z" />
+        </svg>
+      );
+    case 'sound':
+      return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M5 10v4h2.5L11 17V7l-3.5 3H5z" />
+          <path d="M15 10.5a2 2 0 010 3M17 9a4 4 0 010 6" />
+        </svg>
+      );
+    case 'color':
+      return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="10" cy="10" r="2.4" />
+          <circle cx="14" cy="10" r="2.4" />
+          <circle cx="12" cy="14" r="2.4" />
+        </svg>
+      );
+    case 'object':
+      return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 4l7 4v8l-7 4-7-4V8l7-4z" />
+          <path d="M12 12l7-4" />
+          <path d="M12 12l-7-4" />
+          <path d="M12 12v8" />
+        </svg>
+      );
+    case 'manual':
+      return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 5l1.3 3.6 3.7 1.3-3.7 1.3L12 15l-1.3-3.8L7 9.9l3.7-1.3L12 5z" />
+          <path d="M6 5.5l.6 1.6 1.6.6-1.6.6L6 10l-.6-1.7L3.8 7.7l1.6-.6L6 5.5z" />
+          <path d="M18 14.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7.7-1.8z" />
+        </svg>
+      );
+    default:
+      return null;
+  }
+}
 
 export default function DivinationForm({ onSubmit }: DivinationFormProps) {
   const [divinationType, setDivinationType] = useState<DivinationType>('time');
@@ -36,6 +213,7 @@ export default function DivinationForm({ onSubmit }: DivinationFormProps) {
   const [objectDesc, setObjectDesc] = useState<string>('');
   const [errorField, setErrorField] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const activeMethod = divinationMethodLookup[divinationType];
 
   useEffect(() => {
     setErrorField(null);
@@ -66,6 +244,7 @@ export default function DivinationForm({ onSubmit }: DivinationFormProps) {
           month: timeInput.month,
           day: timeInput.day,
           hour: timeInput.hour,
+          minute: timeInput.minute,
           useLunar: useLunar,
         };
         break;
@@ -140,36 +319,68 @@ export default function DivinationForm({ onSubmit }: DivinationFormProps) {
       <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 text-center">梅花易数起卦</h2>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            起卦方式
-          </label>
-          <select
-            value={divinationType}
-            onChange={(e) => {
-              const value = e.target.value;
-              if (isDivinationType(value)) {
-                setDivinationType(value);
-              }
-            }}
-            className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-all"
-          >
-            <optgroup label="传统起卦法">
-              <option value="time">时间起卦（年月日时）</option>
-              <option value="number">数字起卦（报数起卦）</option>
-              <option value="text">文字起卦（测字起卦）</option>
-            </optgroup>
-            <optgroup label="观物起卦法">
-              <option value="direction">方位起卦（八方起卦）</option>
-              <option value="sound">声音起卦（闻声起卦）</option>
-              <option value="color">颜色起卦（观色起卦）</option>
-              <option value="object">物象起卦（见物起卦）</option>
-            </optgroup>
-            <optgroup label="其他">
-              <option value="manual">随机起卦（心动起卦）</option>
-            </optgroup>
-          </select>
+        <div className="space-y-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              起卦方式
+            </label>
+            <span className="text-xs text-gray-400 dark:text-gray-500">点击卡片选择不同的起卦思路</span>
+          </div>
+          <div className="space-y-5">
+            {divinationMethodGroups.map(group => (
+              <div key={group.title} className="space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.35em] text-indigo-400 dark:text-indigo-300/80">
+                  {group.title}
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {group.items.map(method => {
+                    const isActive = method.value === divinationType;
+                    return (
+                      <button
+                        key={method.value}
+                        type="button"
+                        onClick={() => setDivinationType(method.value)}
+                        aria-pressed={isActive}
+                        className={`relative flex items-start gap-3 rounded-xl border-2 p-4 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 dark:focus-visible:ring-indigo-500 ${isActive ? 'border-indigo-500 bg-indigo-50/80 shadow-lg dark:border-indigo-400/70 dark:bg-indigo-500/10' : 'border-transparent bg-slate-50/70 hover:border-indigo-200 dark:bg-gray-800/60 dark:hover:border-indigo-400/40'}`}
+                      >
+                        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${isActive ? 'bg-indigo-500 text-white shadow-md dark:bg-indigo-500/80' : 'bg-white text-indigo-500 shadow-sm dark:bg-gray-900/70 dark:text-indigo-300'}`}>
+                          <MethodIcon type={method.value} active={isActive} />
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                              {method.label}
+                            </span>
+                            <span className="rounded-full bg-indigo-100/70 px-2 py-0.5 text-xs font-medium text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-200">
+                              {method.hint}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-600 dark:text-gray-300">
+                            {method.description}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
+
+        {activeMethod?.tips.length ? (
+          <div className="rounded-xl border border-indigo-100/80 bg-indigo-50/40 p-4 text-sm text-indigo-700 shadow-sm dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-200">
+            <p className="mb-2 font-medium">使用建议</p>
+            <ul className="space-y-1.5">
+              {activeMethod.tips.map((tip, index) => (
+                <li key={`${activeMethod.value}-tip-${index}`} className="flex items-start gap-2">
+                  <span className="mt-1 h-1.5 w-1.5 rounded-full bg-indigo-400 dark:bg-indigo-300" />
+                  <span>{tip}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
 
         {divinationType === 'time' && (
           <div className="space-y-4">
@@ -195,7 +406,7 @@ export default function DivinationForm({ onSubmit }: DivinationFormProps) {
               </div>
             </div>
             
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">年</label>
                 <input
@@ -240,9 +451,20 @@ export default function DivinationForm({ onSubmit }: DivinationFormProps) {
                   max="23"
                 />
               </div>
+              <div>
+                <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">分</label>
+                <input
+                  type="number"
+                  value={timeInput.minute}
+                  onChange={(e) => setTimeInput(prev => ({ ...prev, minute: Number.parseInt(e.target.value, 10) }))}
+                  className="w-full p-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                  min="0"
+                  max="59"
+                />
+              </div>
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              根据起卦时间的年、月、日、时辰进行起卦
+              根据起卦时间的年、月、日、时辰和分钟进行起卦
             </p>
           </div>
         )}

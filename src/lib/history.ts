@@ -38,9 +38,12 @@ export function getHistory(): HistoryItem[] {
     if (!stored) return [];
 
     const history = JSON.parse(stored);
-    // 转换日期字符串为Date对象
+    // 转换日期字符串为Date对象，并兼容旧数据缺失的新字段
     return history.map((item: HistoryItem) => ({
       ...item,
+      method: item.method || '未记录起卦方式',
+      detailLines: item.detailLines || [],
+      seeds: item.seeds || { upper: 0, lower: 0, changing: 0 },
       timestamp: new Date(item.timestamp),
       time: new Date(item.time)
     }));

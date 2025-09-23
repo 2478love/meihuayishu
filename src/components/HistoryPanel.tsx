@@ -42,7 +42,9 @@ export default function HistoryPanel({ onSelect, onClose }: HistoryPanelProps) {
       mutualHexagram: item.mutualHexagram,
       changingHexagram: item.changingHexagram,
       changingLine: item.changingLine,
-
+      method: item.method || '未记录起卦方式',
+      detailLines: item.detailLines || [],
+      seeds: item.seeds || { upper: 0, lower: 0, changing: 0 },
       interpretation: item.interpretation,
       time: item.time
     };
@@ -108,7 +110,9 @@ export default function HistoryPanel({ onSelect, onClose }: HistoryPanelProps) {
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100">{item.mainHexagram.name}</h3>
-
+                        <span className="rounded-full bg-indigo-100/70 px-2 py-0.5 text-xs font-medium text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-200">
+                          {item.method || '未记录起卦方式'}
+                        </span>
                       </div>
                       <p className="text-sm text-gray-600 dark:text-gray-300 mb-1">
                         动爻：第{item.changingLine}爻
