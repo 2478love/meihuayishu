@@ -104,12 +104,14 @@ function timeBasedDivination(input: DivinationInput): DivinationResult {
 
   const upperSeed = context.year + context.month + context.day;
   const lowerSeed = upperSeed + doubleHour;
-  const changingSeed = upperSeed + lowerSeed + minuteSeed;
+  const upperTrigramNumber = normalizeTrigramSeed(upperSeed);
+  const lowerTrigramNumber = normalizeTrigramSeed(lowerSeed);
+  const changingSeed = upperTrigramNumber + lowerTrigramNumber + minuteSeed;
 
   const detailLines = [
     `年月日之和：${context.year} + ${context.month} + ${context.day} = ${upperSeed}`,
     `时辰入卦：${upperSeed} + ${doubleHour} = ${lowerSeed}`,
-    `动爻取数：(${upperSeed} + ${lowerSeed} + ${minuteSeed})`,
+    `动爻取数：(${upperTrigramNumber} + ${lowerTrigramNumber} + ${minuteSeed})`,
   ];
 
   return buildResult({
@@ -191,17 +193,18 @@ function directionBasedDivination(input: DivinationInput): DivinationResult {
   const doubleHour = getChineseDoubleHour(now.getHours());
   const temporalSeed = now.getFullYear() + (now.getMonth() + 1) + now.getDate() + doubleHour;
   const minuteSeed = now.getMinutes();
+  const lowerTrigramNumber = normalizeTrigramSeed(temporalSeed);
 
   const detailLines = [
     `方位取数：${direction} → ${trigramName}卦`,
     `时空取数：${now.getFullYear()} + ${now.getMonth() + 1} + ${now.getDate()} + ${doubleHour} = ${temporalSeed}`,
-    `动爻取数：(${trigram} + ${temporalSeed} + ${minuteSeed})`,
+    `动爻取数：(${trigram} + ${lowerTrigramNumber} + ${minuteSeed})`,
   ];
 
   return buildResult({
     upperSeed: trigram,
     lowerSeed: temporalSeed,
-    changingSeed: trigram + temporalSeed + minuteSeed,
+    changingSeed: trigram + lowerTrigramNumber + minuteSeed,
     method: `方位起卦（观方位：${direction}）`,
     detailLines,
     timestamp: now,
@@ -219,17 +222,18 @@ function soundBasedDivination(input: DivinationInput): DivinationResult {
   const doubleHour = getChineseDoubleHour(now.getHours());
   const minuteSeed = now.getMinutes();
   const temporalSeed = now.getFullYear() + (now.getMonth() + 1) + now.getDate() + doubleHour;
+  const lowerTrigramNumber = normalizeTrigramSeed(temporalSeed);
 
   const detailLines = [
     `声音取象：${sound} → ${TRIGRAM_NAME_BY_NUMBER[trigram]}卦`,
     `时辰入卦：${now.getFullYear()} + ${now.getMonth() + 1} + ${now.getDate()} + ${doubleHour} = ${temporalSeed}`,
-    `动爻取数：(${trigram} + ${doubleHour} + ${minuteSeed})`,
+    `动爻取数：(${trigram} + ${lowerTrigramNumber} + ${minuteSeed})`,
   ];
 
   return buildResult({
     upperSeed: trigram,
     lowerSeed: temporalSeed,
-    changingSeed: trigram + doubleHour + minuteSeed,
+    changingSeed: trigram + lowerTrigramNumber + minuteSeed,
     method: `声音起卦（闻声：${sound}）`,
     detailLines,
     timestamp: now,
@@ -250,17 +254,18 @@ function colorBasedDivination(input: DivinationInput): DivinationResult {
   const now = new Date();
   const doubleHour = getChineseDoubleHour(now.getHours());
   const seasonalSeed = (now.getMonth() + 1) + now.getDate() + doubleHour;
+  const lowerTrigramNumber = normalizeTrigramSeed(seasonalSeed);
 
   const detailLines = [
     `颜色取象：${color} → ${TRIGRAM_NAME_BY_NUMBER[trigram]}卦`,
     `时节取数：${now.getMonth() + 1} + ${now.getDate()} + ${doubleHour} = ${seasonalSeed}`,
-    `动爻取数：(${trigram} + ${seasonalSeed})`,
+    `动爻取数：(${trigram} + ${lowerTrigramNumber})`,
   ];
 
   return buildResult({
     upperSeed: trigram,
     lowerSeed: seasonalSeed,
-    changingSeed: trigram + seasonalSeed,
+    changingSeed: trigram + lowerTrigramNumber,
     method: `颜色起卦（观色：${color}）`,
     detailLines,
     timestamp: now,
