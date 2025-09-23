@@ -72,13 +72,20 @@ export default function Home() {
   const [chatLoading, setChatLoading] = useState(false);
   const insightRequestRef = useRef<{ controller: AbortController; requestId: number } | null>(null);
 
+  const abortInsightRequest = useCallback(() => {
+    if (!insightRequestRef.current) {
+      return;
+    }
+
+    insightRequestRef.current.controller.abort();
+    insightRequestRef.current = null;
+  }, []);
+
   const requestAiInsight = useCallback(async (targetResult: DivinationResult, question?: string) => {
+    abortInsightRequest();
+
     const controller = new AbortController();
     const requestId = Date.now();
-
-    if (insightRequestRef.current) {
-      insightRequestRef.current.controller.abort();
-    }
 
     insightRequestRef.current = { controller, requestId };
 
@@ -131,14 +138,11 @@ export default function Home() {
         insightRequestRef.current = null;
       }
     }
-  }, []);
+  }, [abortInsightRequest]);
 
   useEffect(() => () => {
-    if (insightRequestRef.current) {
-      insightRequestRef.current.controller.abort();
-      insightRequestRef.current = null;
-    }
-  }, []);
+    abortInsightRequest();
+  }, [abortInsightRequest]);
 
   const handleRefreshInsight = () => {
     if (!result) return;
@@ -261,6 +265,7 @@ export default function Home() {
   };
 
   const handleReset = () => {
+    abortInsightRequest();
     setResult(null);
     setAiInsight(null);
     setInsightStatus('idle');
